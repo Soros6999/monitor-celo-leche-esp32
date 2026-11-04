@@ -41,6 +41,7 @@ INTERVALO_LECTURA_MPU_MS = 100      # Leer el acelerómetro cada 100 ms (10 Hz)
 VENTANA_ACTIVIDAD_MS = 10000        # Sumar actividad durante 10 s
 VENTANAS_CALIBRACION = 3            # Ventanas iniciales para calcular lo "normal"
 ALFA_LINEA_BASE = 0.1               # Qué tan rápido se adapta la línea base (0-1)
+LINEA_BASE_MINIMA = 0.02            # g. Evita dividir por cero si la vaca está totalmente quieta
 
 UMBRAL_ACTIVIDAD_ALTA = 1.5         # razón >= 1.5 -> LED amarillo
 UMBRAL_CELO = 2.0                   # razón >= 2.0 -> LED rojo + buzzer + alerta
