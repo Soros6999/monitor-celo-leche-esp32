@@ -22,6 +22,19 @@ PIN_BUZZER = 14         # Se maneja con PWM para generar el tono
 PIN_BOTON = 13          # Con resistencia pull-up interna (presionado = 0)
 
 # ---------------------------------------------------------------
+# ESTADOS DE LA VACA
+# ---------------------------------------------------------------
+ESTADO_NORMAL = "NORMAL"
+ESTADO_ALTA = "ACTIVIDAD_ALTA"
+ESTADO_CELO = "CELO_PROBABLE"
+
+# ---------------------------------------------------------------
+# BUZZER
+# ---------------------------------------------------------------
+BUZZER_FRECUENCIA_HZ = 2000         # Tono del buzzer
+BUZZER_INTERVALO_MS = 300           # Sonido intermitente: 300 ms on / 300 ms off
+
+# ---------------------------------------------------------------
 # ACTIVIDAD (detección de posible celo)
 # ---------------------------------------------------------------
 INTERVALO_LECTURA_MPU_MS = 100      # Leer el acelerómetro cada 100 ms (10 Hz)
