@@ -1,0 +1,12 @@
+# Credenciales (nunca subir a GitHub)
+firmware/secretos.py
+
+# Python
+__pycache__/
+*.pyc
+
+# Editores y sistema operativo
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
