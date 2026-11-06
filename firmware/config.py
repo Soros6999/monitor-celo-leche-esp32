@@ -66,10 +66,16 @@ ANTIRREBOTE_MS = 50
 WIFI_SSID = "Wokwi-GUEST"           # Red del simulador (sin contraseña)
 WIFI_CLAVE = ""
 
-MQTT_BROKER = "test.mosquitto.org"  # Broker público (Wokwi no ve un broker local)
+# Broker público de HiveMQ (Wokwi no puede ver un broker instalado en el PC).
+# Se prueba con el cliente web: https://www.hivemq.com/demos/websocket-client/
+MQTT_BROKER = "broker.hivemq.com"
 MQTT_PUERTO = 1883
-MQTT_CLIENTE_ID = "esp32_vaca01_utp"
-INTERVALO_PUBLICACION_MS = 2000     # Cada cuánto se envían datos
+MQTT_CLIENTE_ID = "esp32_vaca01_utp"   # Se le agrega el ID único del chip
+MQTT_KEEPALIVE_S = 60               # El broker cierra la sesión si no hay actividad
+MQTT_PING_MS = 30000                # Ping para mantener viva la conexión
+MQTT_REINTENTO_MS = 15000           # Si se cae la conexión, reintentar cada 15 s
+WIFI_TIMEOUT_MS = 10000             # Tiempo máximo esperando el WiFi
+INTERVALO_PUBLICACION_MS = 2000     # Cada cuánto se envía el peso (cambiable por MQTT)
 
 # Prefijo único para no mezclarse con otros usuarios del broker público
 PREFIJO = "utp_prog2_rt"
