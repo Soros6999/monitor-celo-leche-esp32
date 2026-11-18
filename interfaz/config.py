@@ -74,10 +74,19 @@ COMPORTAMIENTOS = {
 }
 MOVIMIENTO_MAXIMO = 0.30          # Tope del deslizador de ajuste fino (g)
 
+# Movimientos espontáneos (realismo): picos cortos como un susto o un empujón.
+# Se dimensionaron para que suban como máximo a ACTIVIDAD ALTA y no disparen
+# una falsa alarma de celo: la ventana de 10 s los promedia.
+PROBABILIDAD_PICO = 0.004         # Por cada muestra de 100 ms (≈ un pico cada 25 s)
+DURACION_PICO_S = (0.5, 1.5)
+INTENSIDAD_PICO_G = (0.22, 0.30)
+VARIACION_LENTA = 0.08            # ±8 % de variación lenta del movimiento
+
 # Escenario de demostración: se ejecuta UNA vez, fase por fase.
 # (nombre, comportamiento, duración en segundos simulados, descripción)
 ESCENARIO = [
-    ("Calibración y reposo", "reposo", 60, "El sistema aprende lo normal (30 s) y la vaca sigue tranquila"),
+    ("Calibración y reposo", "reposo", 60,
+     "El sistema aprende lo normal (30 s). A los 45 s la vaca se asusta: sube a amarillo, sin falsa alarma"),
     ("Inquieta", "inquieta", 40, "La vaca se mueve más: debería pasar a Actividad alta"),
     ("Posible celo", "celo", 60, "Movimiento muy alto: alarma de posible celo"),
     ("Recuperación", "reposo", 50, "Vuelve la calma: el estado regresa a Normal"),
@@ -100,6 +109,7 @@ UMBRAL_CELO_MAXIMO = 5.0          # Límite superior aceptado al validar
 MARGEN_HISTERESIS = 0.2
 VENTANAS_EN_GRAFICA = 30          # Ventanas que se dibujan (5 minutos)
 MUESTRAS_EN_GRAFICA = 100         # Muestras instantáneas que se dibujan (10 s)
+LECTURAS_EN_GRAFICA = 60          # Lecturas de la balanza que se dibujan (6 s)
 
 # ---------------------------------------------------------------
 # BALANZA (mismos valores que firmware/config.py)

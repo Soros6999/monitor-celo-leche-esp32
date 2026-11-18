@@ -60,12 +60,19 @@ class SimuladorSistema:
         self.comportamiento = "reposo"
         self.movimiento = config.COMPORTAMIENTOS["reposo"][1]   # g extra
 
+        # Movimientos espontáneos (picos cortos y variación lenta)
+        self.espontaneos = False
+        self._pico_restante = 0.0
+        self._pico_intensidad = 0.0
+        self.picos = 0                    # Cuántos picos han ocurrido
+
         # Escenario
         self.tiempo_escenario = 0.0
         self.fase = 0
         self._ordeno_escenario = False
 
         self.movimientos = []             # Últimas muestras instantáneas (gráfica)
+        self.lecturas_kg = []             # Últimas lecturas de la balanza (gráfica de estabilidad)
         self.registros = []               # Ordeños: lista de diccionarios
         self.eventos = []                 # Lista de Evento
         self.mensajes = []                # Últimos mensajes "publicados" por MQTT
@@ -92,6 +99,8 @@ class SimuladorSistema:
         if self.modo == config.MODO_ESCENARIO:
             self._avanzar_escenario(dt)
 
+        self._actualizar_picos(dt)
+
         # Tarea 1 del firmware: leer el acelerómetro
         ax, ay, az = self._leer_acelerometro()
         self.monitor.agregar_muestra(ax, ay, az)
@@ -101,6 +110,9 @@ class SimuladorSistema:
 
         # Tarea 2: leer la balanza
         self.balanza.actualizar()
+        self.lecturas_kg.append(self.balanza.lecturas[-1])
+        if len(self.lecturas_kg) > config.LECTURAS_EN_GRAFICA:
+            self.lecturas_kg.pop(0)
 
         # Tarea 3: al cerrar la ventana, evaluar el estado y publicar
         estado_anterior = self.monitor.estado
@@ -112,8 +124,8 @@ class SimuladorSistema:
         if self._acumulado_publicacion >= self.intervalo_publicacion_ms:
             self._acumulado_publicacion = 0.0
             self._publicar(config.TOPICO_PESO, {
-                "kg": round(self.balanza.peso_kg(), 2),
-                "litros": round(self.balanza.litros(), 2),
+                "kg": round(self.balanza.peso_kg(), 2) + 0.0,     # + 0.0 evita "-0.0"
+                "litros": round(self.balanza.litros(), 2) + 0.0,
                 "estable": self.balanza.es_estable(),
             })
 
@@ -149,7 +161,7 @@ class SimuladorSistema:
         movimiento va casi vertical (inclinación entre 0.7 y 1) y su tamaño
         varía alrededor de la intensidad elegida (entre 40 % y 160 %).
         """
-        extra = self.movimiento * random.uniform(0.4, 1.6)
+        extra = self._movimiento_efectivo() * random.uniform(0.4, 1.6)
         angulo = random.uniform(0, 2 * math.pi)
         inclinacion = random.choice((-1, 1)) * random.uniform(0.7, 1.0)
         horizontal = math.sqrt(1 - inclinacion ** 2)
@@ -157,6 +169,27 @@ class SimuladorSistema:
         ay = extra * math.sin(angulo) * horizontal
         az = 1.0 + extra * inclinacion
         return ax, ay, az
+
+    def _movimiento_efectivo(self):
+        """Movimiento base, con variación lenta y picos si están activados."""
+        if self._pico_restante > 0:
+            return self._pico_intensidad
+        if self.espontaneos:
+            return self.movimiento * (1 + config.VARIACION_LENTA * math.sin(self.tiempo / 37))
+        return self.movimiento
+
+    def _actualizar_picos(self, dt):
+        if self._pico_restante > 0:
+            self._pico_restante -= dt
+            return
+        if self.espontaneos and random.random() < config.PROBABILIDAD_PICO:
+            self.provocar_pico()
+
+    def provocar_pico(self, duracion=None, intensidad=None):
+        """Un movimiento brusco y corto: un susto, un empujón, una carrera breve."""
+        self._pico_restante = duracion or random.uniform(*config.DURACION_PICO_S)
+        self._pico_intensidad = intensidad or random.uniform(*config.INTENSIDAD_PICO_G)
+        self.picos += 1
 
     # =============================================================
     # Modo manual
@@ -175,6 +208,11 @@ class SimuladorSistema:
 
     def fijar_carga(self, kg):
         self.balanza.fijar_carga(kg)
+
+    def cambiar_espontaneos(self, activo):
+        self.espontaneos = activo
+        texto = "activados" if activo else "desactivados"
+        self.registrar_evento(config.EVENTO_SISTEMA, f"Movimientos espontáneos {texto}")
 
     def cambiar_velocidad(self, velocidad):
         self.velocidad = velocidad
@@ -215,8 +253,12 @@ class SimuladorSistema:
             self._aplicar_fase()
             self.registrar_evento(config.EVENTO_SISTEMA,
                                   f"Escenario: fase {self.fase + 1} — {config.ESCENARIO[self.fase][0]}")
-        # Un ordeño durante la primera fase, para mostrar la balanza
         t = self.tiempo_escenario
+        # A los 45 s la vaca se asusta: un pico corto que NO debe dar alarma
+        if 45 <= t < 45 + dt * 1.5 and self.fase == 0:
+            self.provocar_pico(duracion=1.5, intensidad=0.28)
+            self.registrar_evento(config.EVENTO_SISTEMA, "Escenario: la vaca se asusta y corre un momento")
+        # Un ordeño durante la primera fase, para mostrar la balanza
         if 15 <= t < 45:
             self.balanza.fijar_carga(9.0 * config.DENSIDAD_LECHE)
         elif t >= 55:
@@ -376,6 +418,9 @@ class SimuladorSistema:
             "modo": self.modo,
             "comportamiento": self.comportamiento,
             "movimiento_simulado": self.movimiento,
+            "espontaneos": self.espontaneos,
+            "en_pico": self._pico_restante > 0,
+            "picos": self.picos,
             "escenario": self.info_escenario(),
             # Actividad
             "estado": m.estado,
@@ -399,6 +444,9 @@ class SimuladorSistema:
             "estable": b.es_estable(),
             "carga_objetivo": b.carga_objetivo,
             "factor": b.factor,
+            "lecturas_kg": list(self.lecturas_kg),
+            "tolerancia_kg": b.tolerancia,
+            "ultimas_lecturas": list(b.lecturas),
             # Alarma
             "alarma": alarma,
             "buzzer_sonando": alarma and not self.buzzer_silenciado,

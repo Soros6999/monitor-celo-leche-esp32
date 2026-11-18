@@ -106,6 +106,21 @@ class VistaControl(VistaBase):
             ]),
         ])
 
+        # Realismo: picos espontáneos (sirven en los dos modos)
+        self.interruptor_espontaneos = ft.Switch(
+            label="Movimientos espontáneos (sustos, empujones)", value=False,
+            on_change=self._al_cambiar_espontaneos,
+        )
+        self.boton_susto = ft.OutlinedButton(content="Provocar un susto ahora", icon=ft.Icons.BOLT,
+                                             on_click=self._provocar_susto)
+        self.panel_realismo = ft.Column(spacing=8, controls=[
+            self._subtitulo("Realismo"),
+            self.interruptor_espontaneos,
+            self.boton_susto,
+            ft.Text("Un pico corto sube como mucho a amarillo: la ventana de 10 s lo promedia "
+                    "y no da una falsa alarma de celo.", size=12, color=config.TEXTO_SEC),
+        ])
+
         # Panel del escenario
         self.linea_tiempo = LineaTiempoEscenario()
         self.panel_escenario = ft.Column(visible=False, spacing=10, controls=[
@@ -133,6 +148,8 @@ class VistaControl(VistaBase):
             self.selector_modo,
             self.panel_manual,
             self.panel_escenario,
+            ft.Divider(height=1, color=config.BORDE),
+            self.panel_realismo,
             ft.Divider(height=1, color=config.BORDE),
             ft.Row(wrap=True, spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER, controls=[
                 self.selector_reloj,
@@ -269,6 +286,18 @@ class VistaControl(VistaBase):
         self.simulador.fijar_movimiento(float(e.control.value))
         self.al_cambiar()
 
+    def _al_cambiar_espontaneos(self, e):
+        self.simulador.cambiar_espontaneos(e.control.value)
+        self.notificar("Movimientos espontáneos activados" if e.control.value
+                       else "Movimientos espontáneos desactivados")
+        self.al_cambiar()
+
+    def _provocar_susto(self, e):
+        self.simulador.provocar_pico(duracion=1.5, intensidad=0.28)
+        self.simulador.registrar_evento(config.EVENTO_SISTEMA, "Simulación: la vaca se asusta y corre un momento")
+        self.notificar("Susto provocado: observe la gráfica de movimiento instantáneo en la pantalla Vaca")
+        self.al_cambiar()
+
     def _al_cambiar_reloj(self, e):
         self.simulador.cambiar_velocidad(int(e.control.value))
         self.notificar(f"Reloj de la simulación ×{e.control.value}")
@@ -369,3 +398,4 @@ class VistaControl(VistaBase):
         self.texto_estabilidad.value = f"Peso {estado} · objetivo {d['carga_objetivo']:.1f} kg"
 
         self.interruptor_buzzer.value = d["buzzer_silenciado"]
+        self.interruptor_espontaneos.value = d["espontaneos"]
