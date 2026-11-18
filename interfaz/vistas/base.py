@@ -40,6 +40,7 @@ class VistaBase:
                 ),
                 ft.Column(
                     spacing=2,
+                    expand=True,     # Ocupa el resto del ancho: el subtítulo puede saltar de línea
                     controls=[
                         ft.Text(self.titulo, size=26, weight=ft.FontWeight.BOLD,
                                 color=config.TEXTO),
