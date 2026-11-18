@@ -65,6 +65,14 @@ class VistaBase:
         pass
 
     @staticmethod
+    def titulo_tarjeta(texto, icono, color=config.ACENTO):
+        """Ícono + título que encabeza cada tarjeta."""
+        return ft.Row(spacing=8, controls=[
+            ft.Icon(icono, size=18, color=color),
+            ft.Text(texto, size=15, weight=ft.FontWeight.W_600, color=config.TEXTO, expand=True),
+        ])
+
+    @staticmethod
     def tarjeta(contenido, expand=False, padding=20):
         """Panel con fondo y bordes redondeados (equivale a un Frame)."""
         return ft.Container(

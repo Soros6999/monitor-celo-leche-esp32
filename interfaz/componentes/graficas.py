@@ -11,10 +11,17 @@ import config
 
 class GraficaLineas:
 
-    def __init__(self, series, alto=230, max_y=None, decimales=2, puntos_visibles=False, curvas=True):
-        """series: lista de tuplas (nombre, color, punteada)."""
+    def __init__(self, series, alto=230, max_y=None, decimales=2, puntos_visibles=False, curvas=True,
+                 rango_minimo=None):
+        """series: lista de tuplas (nombre, color, punteada).
+
+        rango_minimo: si se indica, el eje Y no arranca en 0 sino que se ajusta
+        a los datos con al menos ese rango (sirve para ver variaciones pequeñas,
+        como el ruido de la balanza).
+        """
         self.series = series
         self.max_y_fijo = max_y
+        self.rango_minimo = rango_minimo
         self.decimales = decimales
         self._ultimos_datos = None     # Para no redibujar si nada cambió
 
@@ -64,18 +71,28 @@ class GraficaLineas:
         if listas == self._ultimos_datos:
             return
         self._ultimos_datos = [list(v) for v in listas]
-        maximo = 0.0
+        maximo, minimo = 0.0, None
         for datos, valores in zip(self.datos, listas):
             datos.points = [fch.LineChartDataPoint(x=i, y=v) for i, v in enumerate(valores)]
             if valores:
                 maximo = max(maximo, max(valores))
+                minimo = min(valores) if minimo is None else min(minimo, min(valores))
         largo = max((len(v) for v in listas), default=1)
         self.grafica.min_x = 0
         self.grafica.max_x = max(largo - 1, 1)
-        tope = self.max_y_fijo or (maximo * 1.15 if maximo > 0 else 0.1)
+
+        if self.rango_minimo is not None and minimo is not None:
+            # Eje ajustado a los datos, centrado en su promedio
+            centro = (maximo + minimo) / 2
+            mitad = max((maximo - minimo) * 0.6, self.rango_minimo / 2)
+            piso, tope = centro - mitad, centro + mitad
+        else:
+            piso = 0
+            tope = self.max_y_fijo or (maximo * 1.15 if maximo > 0 else 0.1)
+        self.grafica.min_y = piso
         self.grafica.max_y = tope
-        # Etiquetas del eje Y: 0, mitad y tope
+        # Etiquetas del eje Y: piso, mitad y tope
         self.grafica.left_axis.labels = [
             fch.ChartAxisLabel(value=v, label=ft.Text(f"{v:.{self.decimales}f}", size=10, color=config.TEXTO_SEC))
-            for v in (0, tope / 2, tope)
+            for v in (piso, (piso + tope) / 2, tope)
         ]

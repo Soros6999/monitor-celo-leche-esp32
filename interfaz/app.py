@@ -15,7 +15,8 @@ from modelo.simulador import SimuladorSistema
 from componentes.barra_estado import BarraEstado
 from componentes.alarma import BannerAlarma
 from componentes.escenario import FranjaEscenario
-from vistas.monitoreo import VistaMonitoreo
+from vistas.vaca import VistaVaca
+from vistas.leche import VistaLeche
 from vistas.control import VistaControl
 from vistas.historial import VistaHistorial
 from vistas.eventos import VistaEventos
@@ -25,10 +26,11 @@ class AplicacionMonitor:
 
     # Secciones del menú: (texto, ícono normal, ícono seleccionado)
     SECCIONES = [
-        ("Monitoreo", ft.Icons.MONITOR_HEART_OUTLINED, ft.Icons.MONITOR_HEART),
-        ("Control", ft.Icons.TUNE_OUTLINED, ft.Icons.TUNE),
+        ("Vaca", ft.Icons.SENSORS_OUTLINED, ft.Icons.SENSORS),
+        ("Leche", ft.Icons.WATER_DROP_OUTLINED, ft.Icons.WATER_DROP),
         ("Historial", ft.Icons.TABLE_CHART_OUTLINED, ft.Icons.TABLE_CHART),
         ("Eventos", ft.Icons.NOTIFICATIONS_OUTLINED, ft.Icons.NOTIFICATIONS),
+        ("Control", ft.Icons.TUNE_OUTLINED, ft.Icons.TUNE),
     ]
 
     def __init__(self, page: ft.Page):
@@ -43,11 +45,13 @@ class AplicacionMonitor:
         self.simulador = SimuladorSistema()
 
         # Una instancia de cada pantalla (todas heredan de VistaBase)
+        # (en el mismo orden que SECCIONES)
         self.vistas = [
-            VistaMonitoreo(),
-            VistaControl(self.simulador, al_cambiar=self._refrescar, notificar=self.notificar),
+            VistaVaca(),
+            VistaLeche(),
             VistaHistorial(),
             VistaEventos(),
+            VistaControl(self.simulador, al_cambiar=self._refrescar, notificar=self.notificar),
         ]
 
         # Partes comunes a todas las pantallas
