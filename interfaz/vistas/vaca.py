@@ -164,13 +164,16 @@ class VistaVaca(VistaBase):
 
     def _actualizar_variables(self, d):
         if d["calibrando"]:
+            # Mientras calibra, la línea base todavía no es real (vale el mínimo
+            # LINEA_BASE_MINIMA): mostrarla confundiría al usuario.
             self.tarjeta_actividad.actualizar("--", "Esperando la primera ventana")
             self.tarjeta_razon.actualizar("--", "Disponible al terminar la calibración")
+            self.tarjeta_base.actualizar("--", "Se calcula con las 3 primeras ventanas")
         else:
             self.tarjeta_actividad.actualizar(f"{d['actividad']:.4f}", "Promedio de la última ventana")
             self.tarjeta_razon.actualizar(f"{d['razon']:.2f}", "Actividad ÷ línea base",
                                           config.COLOR_ESTADO[d["estado"]])
-        self.tarjeta_base.actualizar(f"{d['linea_base']:.4f}", "Lo normal para esta vaca")
+            self.tarjeta_base.actualizar(f"{d['linea_base']:.4f}", "Lo normal para esta vaca")
         self.tarjeta_umbral.actualizar(f"{d['umbral_celo']:.2f}",
                                        f"Actividad alta desde {d['umbral_alta']:.1f}")
 
