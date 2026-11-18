@@ -45,6 +45,7 @@ LINEA_BASE_MINIMA = 0.02            # g. Evita dividir por cero si la vaca está
 
 UMBRAL_ACTIVIDAD_ALTA = 1.5         # razón >= 1.5 -> LED amarillo
 UMBRAL_CELO = 2.0                   # razón >= 2.0 -> LED rojo + buzzer + alerta
+MARGEN_HISTERESIS = 0.2             # Para BAJAR de estado: umbral - margen (evita saltos en el límite)
 
 # ---------------------------------------------------------------
 # BALANZA

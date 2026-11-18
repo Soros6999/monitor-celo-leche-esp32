@@ -10,6 +10,9 @@
 #   3. Actividad de una ventana = PROMEDIO de esos valores durante 10 s.
 #   4. Línea base = actividad "normal" de la vaca (se calibra al inicio).
 #   5. Razón = actividad / línea base. Si es >= 2, posible celo.
+#   6. Histéresis: para BAJAR de estado, la razón debe quedar por debajo
+#      del umbral menos un margen (0.2). Evita que el estado salte de un
+#      lado a otro cuando la razón está justo en el límite.
 
 import math
 import time
@@ -19,13 +22,14 @@ import config
 class MonitorActividad:
 
     def __init__(self, ventana_ms, ventanas_calibracion, alfa,
-                 umbral_alta, umbral_celo, linea_base_minima):
+                 umbral_alta, umbral_celo, linea_base_minima, margen_histeresis=0.0):
         self.ventana_ms = ventana_ms
         self.ventanas_calibracion = ventanas_calibracion
         self.alfa = alfa
         self.umbral_alta = umbral_alta
         self.umbral_celo = umbral_celo
         self.linea_base_minima = linea_base_minima
+        self.margen = margen_histeresis
 
         # Acumuladores de la ventana actual
         self.suma = 0.0
@@ -83,10 +87,16 @@ class MonitorActividad:
     def _evaluar(self):
         """Compara la actividad con la línea base y decide el estado."""
         self.razon = self.actividad / self.linea_base
+        anterior = self.estado
 
-        if self.razon >= self.umbral_celo:
+        # Histéresis: si ya se está en un estado alto, para salir de él
+        # la razón debe bajar del umbral MENOS el margen.
+        margen_celo = self.margen if anterior == config.ESTADO_CELO else 0.0
+        margen_alta = self.margen if anterior in (config.ESTADO_ALTA, config.ESTADO_CELO) else 0.0
+
+        if self.razon >= self.umbral_celo - margen_celo:
             self.estado = config.ESTADO_CELO
-        elif self.razon >= self.umbral_alta:
+        elif self.razon >= self.umbral_alta - margen_alta:
             self.estado = config.ESTADO_ALTA
         else:
             self.estado = config.ESTADO_NORMAL

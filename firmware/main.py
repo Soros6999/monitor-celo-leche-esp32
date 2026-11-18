@@ -34,6 +34,7 @@ monitor = MonitorActividad(
     config.UMBRAL_ACTIVIDAD_ALTA,
     config.UMBRAL_CELO,
     config.LINEA_BASE_MINIMA,
+    config.MARGEN_HISTERESIS,
 )
 
 balanza = Balanza(
