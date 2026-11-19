@@ -1,20 +1,25 @@
 # vistas/historial.py
-# Pantalla Historial: los ordeños de días anteriores.
+# Pantalla Historial: los ordeños de días anteriores y las alertas respondidas.
 #
 # La pantalla Leche muestra lo de HOY; esta muestra la evolución en el tiempo.
 #
 # Organización:
 #   Fila 1: filtros (periodo y origen)
-#   Fila 2: tabla de ordeños (DataTable)
+#   Fila 2: 4 tarjetas con el resumen del periodo
+#   Fila 3: gráfica de litros por día     |  alertas de celo respondidas
+#   Fila 4: tabla de ordeños (DataTable)
 #
 # Datos que usa (de simulador.estado()):
 #   datos["registros"]  -> ordeños: ordeno, fecha, litros, kg, origen
+#   datos["respuestas"] -> respuestas del ganadero: fecha, respuesta, razon
 
 from datetime import datetime, timedelta
 
 import flet as ft
 import config
 from vistas.base import VistaBase
+from componentes.tarjetas import TarjetaDato
+from componentes.graficas import GraficaBarras
 
 TODOS = "todos"
 DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
@@ -34,7 +39,7 @@ class VistaHistorial(VistaBase):
         self._filtrados = []              # Lo que se ve en la tabla
         super().__init__(
             titulo="Historial",
-            subtitulo="Ordeños registrados, con filtro por periodo y origen",
+            subtitulo="Producción de leche por día y alertas de celo respondidas",
             icono=ft.Icons.TABLE_CHART,
         )
 
@@ -44,6 +49,10 @@ class VistaHistorial(VistaBase):
     def construir(self):
         return [
             self._barra_filtros(),
+            self._tarjetas_resumen(),
+            ft.ResponsiveRow(spacing=16, run_spacing=16, controls=[
+                self._tarjeta_grafica(), self._tarjeta_alertas(),
+            ]),
             self._tarjeta_tabla(),
         ]
 
@@ -64,8 +73,37 @@ class VistaHistorial(VistaBase):
                       vertical_alignment=ft.CrossAxisAlignment.CENTER,
                       controls=[self.selector_periodo, self.selector_origen])
 
+    def _tarjetas_resumen(self):
+        col = {"xs": 6, "md": 3}
+        self.tarjeta_ordenos = TarjetaDato("Ordeños", ft.Icons.FORMAT_LIST_NUMBERED, "", config.AZUL, col)
+        self.tarjeta_litros = TarjetaDato("Litros en total", ft.Icons.LOCAL_DRINK, "L", config.AZUL, col)
+        self.tarjeta_promedio = TarjetaDato("Promedio por día", ft.Icons.EQUALIZER, "L", config.TEXTO_SEC, col)
+        self.tarjeta_celos = TarjetaDato("Celos confirmados", ft.Icons.FAVORITE, "", config.ROJO, col)
+        return ft.ResponsiveRow(spacing=16, run_spacing=16, controls=[
+            self.tarjeta_ordenos.control, self.tarjeta_litros.control,
+            self.tarjeta_promedio.control, self.tarjeta_celos.control,
+        ])
 
+    def _tarjeta_grafica(self):
+        self.grafica_dias = GraficaBarras(color=config.AZUL, unidad="L")
+        self.texto_grafica = ft.Text("", size=12, color=config.TEXTO_SEC)
+        tarjeta = self.tarjeta(ft.Column(spacing=12, controls=[
+            self.titulo_tarjeta(f"Litros por día (últimos {config.DIAS_EN_GRAFICA} días)",
+                                ft.Icons.BAR_CHART, config.AZUL),
+            self.grafica_dias.control,
+            self.texto_grafica,
+        ]))
+        tarjeta.col = {"xs": 12, "lg": 8}
+        return tarjeta
 
+    def _tarjeta_alertas(self):
+        self.lista_alertas = ft.Column(spacing=8)
+        tarjeta = self.tarjeta(ft.Column(spacing=12, controls=[
+            self.titulo_tarjeta("Alertas de celo respondidas", ft.Icons.FACT_CHECK, config.ROJO),
+            self.lista_alertas,
+        ]))
+        tarjeta.col = {"xs": 12, "lg": 4}
+        return tarjeta
 
     def _tarjeta_tabla(self):
         estilo_encabezado = ft.TextStyle(size=12, weight=ft.FontWeight.W_600, color=config.TEXTO_SEC)
@@ -113,12 +151,12 @@ class VistaHistorial(VistaBase):
     # =============================================================
     def actualizar(self, d):
         self._datos = d
-        registros = d["registros"]
+        registros, respuestas = d["registros"], d["respuestas"]
         periodo = self._valor_periodo()
         origen = self.selector_origen.value or TODOS
         ultimo = registros[-1]["ordeno"] if registros else None
-        # La fecha de hoy entra en la firma: a medianoche cambia el periodo
-        firma = (periodo, origen, len(registros), ultimo, datetime.now().date())
+        # La fecha de hoy entra en la firma: a medianoche cambian los días de la gráfica
+        firma = (periodo, origen, len(registros), ultimo, len(respuestas), datetime.now().date())
         if firma == self._firma:
             return                         # Nada nuevo: no se reconstruye
         self._firma = firma
@@ -127,6 +165,9 @@ class VistaHistorial(VistaBase):
         desde = self._inicio_periodo(periodo)
         self._filtrados = [r for r in por_origen if desde is None or r["fecha"] >= desde]
 
+        self._actualizar_resumen(self._filtrados, respuestas, desde)
+        self._actualizar_grafica(por_origen)
+        self._actualizar_alertas(respuestas)
         self._actualizar_tabla(self._filtrados, len(registros))
 
     def _valor_periodo(self):
@@ -143,8 +184,49 @@ class VistaHistorial(VistaBase):
         hoy = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         return hoy - timedelta(days=dias - 1)
 
+    def _actualizar_resumen(self, filtrados, respuestas, desde):
+        litros = sum(r["litros"] for r in filtrados)
+        dias_con_ordeno = len({r["fecha"].date() for r in filtrados})
+        self.tarjeta_ordenos.actualizar(str(len(filtrados)), "En el periodo elegido")
+        self.tarjeta_litros.actualizar(f"{litros:.2f}", f"{litros * config.DENSIDAD_LECHE:.1f} kg")
+        if dias_con_ordeno:
+            self.tarjeta_promedio.actualizar(f"{litros / dias_con_ordeno:.2f}",
+                                             f"En {dias_con_ordeno} días con ordeños")
+        else:
+            self.tarjeta_promedio.actualizar("--", "Sin ordeños en el periodo")
 
+        en_periodo = [r for r in respuestas if desde is None or r["fecha"] >= desde]
+        confirmados = sum(1 for r in en_periodo if r["respuesta"] == "confirmar")
+        falsas = len(en_periodo) - confirmados
+        self.tarjeta_celos.actualizar(str(confirmados),
+                                      "1 falsa alarma" if falsas == 1 else f"{falsas} falsas alarmas")
 
+    def _actualizar_grafica(self, registros):
+        """Suma los litros de cada uno de los últimos días (hoy es la última barra)."""
+        hoy = datetime.now().date()
+        dias = [hoy - timedelta(days=n) for n in range(config.DIAS_EN_GRAFICA - 1, -1, -1)]
+        litros = {dia: 0.0 for dia in dias}
+        for r in registros:
+            if r["fecha"].date() in litros:
+                litros[r["fecha"].date()] += r["litros"]
+        etiquetas = ["Hoy" if dia == hoy else f"{DIAS_SEMANA[dia.weekday()]}\n{dia:%d/%m}" for dia in dias]
+        valores = [round(litros[dia], 2) for dia in dias]
+        self.grafica_dias.actualizar(etiquetas, valores, destacado=len(dias) - 1)
+        con_datos = [v for v in valores if v > 0]
+        if con_datos:
+            self.texto_grafica.value = (f"Total {sum(valores):.1f} L · máximo {max(valores):.1f} L "
+                                        f"· mínimo {min(con_datos):.1f} L (días con ordeños)")
+        else:
+            self.texto_grafica.value = "No hay ordeños en estos días."
+
+    def _actualizar_alertas(self, respuestas):
+        if not respuestas:
+            self.lista_alertas.controls = [ft.Text(
+                "Todavía no hay alertas respondidas. Cuando aparezca un posible celo, "
+                "su respuesta (confirmar o falsa alarma) quedará aquí.",
+                size=13, color=config.TEXTO_SEC)]
+            return
+        self.lista_alertas.controls = [self._fila_alerta(r) for r in reversed(respuestas[-6:])]
 
     def _actualizar_tabla(self, filtrados, total):
         visibles = list(reversed(filtrados))[:config.FILAS_HISTORIAL]   # Más recientes primero
@@ -174,3 +256,20 @@ class VistaHistorial(VistaBase):
             ft.DataCell(origen),
         ])
 
+    def _fila_alerta(self, r):
+        confirmado = r["respuesta"] == "confirmar"
+        color = config.ROJO if confirmado else config.TEXTO_SEC
+        return ft.Container(
+            padding=ft.Padding.symmetric(horizontal=12, vertical=10),
+            border_radius=10,
+            bgcolor=config.PANEL_2,
+            border=ft.Border.only(left=ft.BorderSide(3, color)),
+            content=ft.Row(spacing=12, controls=[
+                ft.Icon(ft.Icons.FAVORITE if confirmado else ft.Icons.DO_NOT_DISTURB_ON_OUTLINED,
+                        size=18, color=color),
+                ft.Column(spacing=2, expand=True, controls=[
+                    ft.Text("Celo confirmado" if confirmado else "Falsa alarma", size=13, color=config.TEXTO),
+                    ft.Text(f"{r['fecha']:%d/%m %H:%M} · razón {r['razon']:.2f}", size=11, color=config.TEXTO_SEC),
+                ]),
+            ]),
+        )

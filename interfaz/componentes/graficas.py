@@ -1,8 +1,11 @@
 # componentes/graficas.py
-# Gráficas de línea basadas en flet_charts.
+# Gráficas basadas en flet_charts.
 #
 # GraficaLineas recibe varias series (nombre, color) y se actualiza con
 # listas de valores: cada lista se convierte en puntos (x = posición, y = valor).
+# GraficaBarras dibuja una barra por categoría (litros por día en el Historial).
+
+import math
 
 import flet as ft
 import flet_charts as fch
@@ -95,4 +98,62 @@ class GraficaLineas:
         self.grafica.left_axis.labels = [
             fch.ChartAxisLabel(value=v, label=ft.Text(f"{v:.{self.decimales}f}", size=10, color=config.TEXTO_SEC))
             for v in (piso, (piso + tope) / 2, tope)
+        ]
+
+
+class GraficaBarras:
+    """Gráfica de barras: una barra por categoría (por ejemplo, litros por día).
+
+    Igual que GraficaLineas, no redibuja si los datos no cambiaron.
+    La barra 'destacada' (por ejemplo, hoy) se pinta con otro color.
+    """
+
+    def __init__(self, color, color_destacado=config.ACENTO, alto=220, decimales=1, unidad=""):
+        self.color = color
+        self.color_destacado = color_destacado
+        self.decimales = decimales
+        self.unidad = unidad
+        self._ultimos_datos = None
+
+        self.grafica = fch.BarChart(
+            height=alto,
+            interactive=True,
+            groups=[],
+            horizontal_grid_lines=fch.ChartGridLines(color=config.BORDE, width=1, dash_pattern=[3, 3]),
+            left_axis=fch.ChartAxis(label_size=40),
+            bottom_axis=fch.ChartAxis(label_size=36),
+            border=ft.Border.only(bottom=ft.BorderSide(1, config.BORDE)),
+        )
+        self.control = self.grafica
+
+    def actualizar(self, etiquetas, valores, destacado=None):
+        """etiquetas: texto bajo cada barra; valores: altura de cada barra;
+        destacado: posición de la barra que se pinta con el color destacado."""
+        datos = (list(etiquetas), list(valores), destacado)
+        if datos == self._ultimos_datos:
+            return
+        self._ultimos_datos = datos
+
+        self.grafica.groups = [
+            fch.BarChartGroup(x=i, rods=[fch.BarChartRod(
+                from_y=0, to_y=valor, width=22,
+                color=self.color_destacado if i == destacado else self.color,
+                border_radius=ft.BorderRadius.only(top_left=4, top_right=4),
+                tooltip=f"{valor:.{self.decimales}f} {self.unidad}".strip(),
+            )])
+            for i, valor in enumerate(valores)
+        ]
+        # Tope redondeado hacia arriba a múltiplos de 5 (ejes con números "limpios")
+        tope = max(math.ceil(max(valores, default=0) * 1.1 / 5) * 5, 5)
+        self.grafica.max_y = tope
+        self.grafica.left_axis.labels = [
+            fch.ChartAxisLabel(value=v, label=ft.Text(f"{v:.0f}", size=10, color=config.TEXTO_SEC))
+            for v in (0, tope / 2, tope)
+        ]
+        self.grafica.bottom_axis.labels = [
+            fch.ChartAxisLabel(value=i, label=ft.Container(
+                padding=ft.Padding.only(top=6),
+                content=ft.Text(texto, size=10, color=config.TEXTO_SEC, text_align=ft.TextAlign.CENTER),
+            ))
+            for i, texto in enumerate(etiquetas)
         ]

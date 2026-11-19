@@ -170,5 +170,6 @@ NOMBRE_ORIGEN = {
     "escenario": "Escenario",
     "ejemplo": "Ejemplo",
 }
+DIAS_EN_GRAFICA = 7               # Barras de la gráfica de litros por día
 FILAS_HISTORIAL = 100             # Filas que se dibujan como máximo en la tabla
 
