@@ -76,6 +76,7 @@ class SimuladorSistema:
         self.registros = []               # Ordeños: lista de diccionarios
         self.eventos = []                 # Lista de Evento
         self.mensajes = []                # Últimos mensajes "publicados" por MQTT
+        self.respuestas = []              # Respuestas del ganadero a las alertas de celo
 
         self._cargar_ordenos_de_ejemplo()
         self.registrar_evento(config.EVENTO_SISTEMA, "Sistema iniciado con datos simulados")
@@ -356,6 +357,12 @@ class SimuladorSistema:
             "falsa": "Alerta marcada como falsa alarma por el ganadero",
         }
         self.registrar_evento(config.EVENTO_ALERTA, textos[respuesta])
+        # Se guarda también como dato (no solo como texto) para el historial
+        self.respuestas.append({
+            "fecha": datetime.now(),
+            "respuesta": respuesta,
+            "razon": round(self.monitor.razon, 2),
+        })
         if not self.buzzer_silenciado:
             self.buzzer_silenciado = True
 
@@ -455,5 +462,6 @@ class SimuladorSistema:
             "registros": list(self.registros),
             "eventos": list(self.eventos),
             "mensajes": list(self.mensajes),
+            "respuestas": list(self.respuestas),
             "intervalo_publicacion_ms": self.intervalo_publicacion_ms,
         }
