@@ -154,3 +154,21 @@ EVENTO_CONEXION = "Conexión"
 EVENTO_SISTEMA = "Sistema"
 TIPOS_EVENTO = [EVENTO_ALERTA, EVENTO_COMANDO, EVENTO_ORDENO, EVENTO_CONEXION, EVENTO_SISTEMA]
 EVENTOS_GUARDADOS = 200
+
+# ---------------------------------------------------------------
+# HISTORIAL
+# ---------------------------------------------------------------
+# Periodos del filtro: (clave, texto, días hacia atrás; None = todo)
+PERIODOS_HISTORIAL = [
+    ("7", "7 días", 7),
+    ("30", "30 días", 30),
+    ("todo", "Todo", None),
+]
+# Origen de cada ordeño: cómo se muestra
+NOMBRE_ORIGEN = {
+    "pulsador": "Pulsador",
+    "escenario": "Escenario",
+    "ejemplo": "Ejemplo",
+}
+FILAS_HISTORIAL = 100             # Filas que se dibujan como máximo en la tabla
+
