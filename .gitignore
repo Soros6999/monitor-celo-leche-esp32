@@ -13,3 +13,6 @@ Thumbs.db
 
 # Entorno virtual de Python
 .venv/
+
+# Archivos CSV exportados desde la interfaz
+interfaz/exportes/

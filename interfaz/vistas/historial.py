@@ -4,7 +4,7 @@
 # La pantalla Leche muestra lo de HOY; esta muestra la evolución en el tiempo.
 #
 # Organización:
-#   Fila 1: filtros (periodo y origen)
+#   Fila 1: filtros (periodo y origen) y botón Exportar CSV
 #   Fila 2: 4 tarjetas con el resumen del periodo
 #   Fila 3: gráfica de litros por día     |  alertas de celo respondidas
 #   Fila 4: tabla de ordeños (DataTable)
@@ -13,6 +13,7 @@
 #   datos["registros"]  -> ordeños: ordeno, fecha, litros, kg, origen
 #   datos["respuestas"] -> respuestas del ganadero: fecha, respuesta, razon
 
+import os
 from datetime import datetime, timedelta
 
 import flet as ft
@@ -20,6 +21,7 @@ import config
 from vistas.base import VistaBase
 from componentes.tarjetas import TarjetaDato
 from componentes.graficas import GraficaBarras
+from exportacion import exportar_csv
 
 TODOS = "todos"
 DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
@@ -33,10 +35,12 @@ COLOR_ORIGEN = {
 
 class VistaHistorial(VistaBase):
 
-    def __init__(self):
+    def __init__(self, notificar):
+        # Se guardan ANTES de super().__init__, porque construir() los usa
+        self.notificar = notificar        # Muestra un mensaje (SnackBar)
         self._firma = None                # Para reconstruir solo si algo cambió
         self._datos = None
-        self._filtrados = []              # Lo que se ve en la tabla
+        self._filtrados = []              # Lo que se ve en la tabla (y lo que se exporta)
         super().__init__(
             titulo="Historial",
             subtitulo="Producción de leche por día y alertas de celo respondidas",
@@ -68,10 +72,15 @@ class VistaHistorial(VistaBase):
                     [ft.DropdownOption(key=k, text=t) for k, t in config.NOMBRE_ORIGEN.items()],
             on_select=self._al_cambiar_filtro,
         )
+        self.boton_exportar = ft.Button(
+            content="Exportar CSV", icon=ft.Icons.DOWNLOAD,
+            tooltip="Guarda los ordeños de la tabla en un archivo para Excel",
+            on_click=self._al_exportar,
+        )
         # Sin hijos con expand=True: dentro de un Row(wrap=True) darían error
         return ft.Row(wrap=True, spacing=12, run_spacing=12,
                       vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                      controls=[self.selector_periodo, self.selector_origen])
+                      controls=[self.selector_periodo, self.selector_origen, self.boton_exportar])
 
     def _tarjetas_resumen(self):
         col = {"xs": 6, "md": 3}
@@ -145,6 +154,18 @@ class VistaHistorial(VistaBase):
         if self._datos:
             self.actualizar(self._datos)
 
+    def _al_exportar(self, e):
+        """Evento on_click: exporta exactamente lo que se ve en la tabla."""
+        if not self._filtrados:
+            self.notificar("No hay ordeños para exportar con ese filtro", False)
+            return
+        try:
+            ruta = exportar_csv(self._filtrados)
+        except OSError as error:
+            self.notificar(f"No se pudo guardar el archivo: {error}", False)
+            return
+        nombre = os.path.join(config.CARPETA_EXPORTES, os.path.basename(ruta))
+        self.notificar(f"{len(self._filtrados)} ordeños exportados a {nombre}")
 
     # =============================================================
     # Actualización periódica

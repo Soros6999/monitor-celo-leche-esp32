@@ -49,7 +49,7 @@ class AplicacionMonitor:
         self.vistas = [
             VistaVaca(),
             VistaLeche(),
-            VistaHistorial(),
+            VistaHistorial(notificar=self.notificar),
             VistaEventos(),
             VistaControl(self.simulador, al_cambiar=self._refrescar, notificar=self.notificar),
         ]

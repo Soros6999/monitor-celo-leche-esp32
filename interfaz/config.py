@@ -173,3 +173,8 @@ NOMBRE_ORIGEN = {
 DIAS_EN_GRAFICA = 7               # Barras de la gráfica de litros por día
 FILAS_HISTORIAL = 100             # Filas que se dibujan como máximo en la tabla
 
+# Exportación a CSV. Se usa ";" y coma decimal porque así lo abre Excel en
+# español (Colombia); con "," y punto, Excel pondría todo en una columna.
+CARPETA_EXPORTES = "exportes"     # Dentro de la carpeta interfaz/
+SEPARADOR_CSV = ";"
+DECIMAL_CSV = ","
